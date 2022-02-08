@@ -998,6 +998,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
             seq_a = (torch.ones(input_ids.shape[0])*pt_id).type_as(input_ids).view(-1,1)
             seq_b = (torch.ones(input_ids.shape[0])*nt_id).type_as(input_ids).view(-1,1)
             if not(multi_code is None):
+                all_embeddings = gedi_model.get_input_embeddings()   
                 if gedi_basic==False:
                     seq_a2 = torch.LongTensor(tokenizer.encode('positive')).unsqueeze(0).to(seq_a.device)
 
@@ -1015,7 +1016,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
                         protagonist_append_token = tokenizer.encode(protagonist_append)
                         protagonist_append_ids = torch.LongTensor(protagonist_append_token).unsqueeze(0).to(seq_a.device)
                     
-                    all_embeddings = gedi_model.get_input_embeddings()                
+                                 
                     embed100 = all_embeddings(seq_100)
                     embed50 = all_embeddings(seq_50)
                     embed0 = all_embeddings(seq_0)
@@ -1127,19 +1128,21 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
                     # input_batched = torch.cat((model_inputs["input_ids"],model_inputs["input_ids"]),dim=0)
                     
                     seq_batched = torch.cat((seq_batched,input_batched),dim=1)
-
+                    
                     batched_embedding = all_embeddings(seq_batched)
                     # print('batched embedding:', batched_embedding.size())
-                    batched_embedding[0][1]=embed
-                    batched_embedding[1][1]=embed
+                    if gedi_basic==False:
+                        batched_embedding[0][1]=embed
+                        batched_embedding[1][1]=embed
                     inputs = {"inputs_embeds": batched_embedding, "pad_lens": gedi_pad_lens}
                     # inputs = gedi_model.prepare_inputs_for_generation(seq_batched, past=gedi_past)
                     # inputs["pad_lens"] = gedi_pad_lens
                 else:
                     batched_embedding = all_embeddings(seq_batched)
                     # print('batched embedding:', batched_embedding.size())
-                    batched_embedding[0][1]=embed
-                    batched_embedding[1][1]=embed
+                    if gedi_basic==False:
+                        batched_embedding[0][1]=embed
+                        batched_embedding[1][1]=embed
                     inputs = {"inputs_embeds": batched_embedding, "pad_lens": gedi_pad_lens, "past":gedi_past}
                     # inputs = {"input_ids": seq_batched, "pad_lens": gedi_pad_lens, "past":gedi_past}
 

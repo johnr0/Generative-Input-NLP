@@ -4,11 +4,9 @@
 <!-- ![GeDi logo](https://github.com/salesforce/GeDi/blob/master/gedi_logo_small.png) -->
 --------------------------------------------------------------------------------
 
-TaleBrush Backend.
+For experimenting Generative Input with NLP backend
 
 Forked from [GeDi: Generative Discriminator Guided Sequence Generation](https://arxiv.org/abs/2009.06367)
-
-We use GeDi with the secondary code as the level of the protagonist's fortune (0~100).
 
 ## TODO 
 * Parse out protagonist for the movie summary dataset.
