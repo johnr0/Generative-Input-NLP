@@ -990,6 +990,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
             else:
                 raise RuntimeError("expects attr_class is 0 or 1")
 
+           
 
 
             #prepending tokens corresponding to 'positive' and 'negative' to the inputs
@@ -997,82 +998,64 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
             seq_a = (torch.ones(input_ids.shape[0])*pt_id).type_as(input_ids).view(-1,1)
             seq_b = (torch.ones(input_ids.shape[0])*nt_id).type_as(input_ids).view(-1,1)
             if not(multi_code is None):
-                seq_a2 = torch.LongTensor(tokenizer.encode('positive')).unsqueeze(0).to(seq_a.device)
+                if gedi_basic==False:
+                    seq_a2 = torch.LongTensor(tokenizer.encode('positive')).unsqueeze(0).to(seq_a.device)
 
-                secondary_code = tokenizer.decode(multi_code[0])
-                # # # John: below added to get extreme points
-                id_100 = tokenizer.encode('good')
-                id_50 = tokenizer.encode('neutral')
-                id_0 = tokenizer.encode('bad')
-                seq_100 = torch.LongTensor(id_100).unsqueeze(0).to(seq_a.device)
-                seq_50 = torch.LongTensor(id_50).unsqueeze(0).to(seq_a.device)
-                seq_0 = torch.LongTensor(id_0).unsqueeze(0).to(seq_a.device)
+                    secondary_code = tokenizer.decode(multi_code[0])
+                    # # # John: below added to get extreme points
+                    id_100 = tokenizer.encode('good')
+                    id_50 = tokenizer.encode('neutral')
+                    id_0 = tokenizer.encode('bad')
+                    seq_100 = torch.LongTensor(id_100).unsqueeze(0).to(seq_a.device)
+                    seq_50 = torch.LongTensor(id_50).unsqueeze(0).to(seq_a.device)
+                    seq_0 = torch.LongTensor(id_0).unsqueeze(0).to(seq_a.device)
 
-                if protagonist is not None:
-                    protagonist_append = 'Protagonist: '+protagonist+' # '
-                    protagonist_append_token = tokenizer.encode(protagonist_append)
-                    protagonist_append_ids = torch.LongTensor(protagonist_append_token).unsqueeze(0).to(seq_a.device)
-                # id_100 = tokenizer.encode('positive')
-                # id_0 = tokenizer.encode('negative')
-                # seq_100 = torch.LongTensor(id_100).unsqueeze(0).to(seq_a.device)
-                # seq_0 = torch.LongTensor(id_0).unsqueeze(0).to(seq_a.device)
+                    if protagonist is not None:
+                        protagonist_append = 'Protagonist: '+protagonist+' # '
+                        protagonist_append_token = tokenizer.encode(protagonist_append)
+                        protagonist_append_ids = torch.LongTensor(protagonist_append_token).unsqueeze(0).to(seq_a.device)
+                    
+                    all_embeddings = gedi_model.get_input_embeddings()                
+                    embed100 = all_embeddings(seq_100)
+                    embed50 = all_embeddings(seq_50)
+                    embed0 = all_embeddings(seq_0)
 
+                    if secondary_code=='100':
+                        embed = embed100
+                    elif secondary_code=='50':
+                        embed = embed50
+                    elif secondary_code=='0':
+                        embed = embed0
+                    elif int(secondary_code)>0 and int(secondary_code)<50:
+                        sc = int(secondary_code)
+                        ratio1 = sc/50
+                        ratio2 = 1-sc/50
+                        embed = ratio1*embed50 + ratio2*embed0
+                    elif int(secondary_code)>50 and int(secondary_code)<100:
+                        sc = int(secondary_code)
+                        ratio1 = (100-sc)/50
+                        ratio2 = (sc-50)/50
+                        embed = ratio1*embed50 + ratio2*embed100
+                    
+                    # origin
+                    # John: 6/21 commented below
 
-                all_embeddings = gedi_model.get_input_embeddings()                
-                embed100 = all_embeddings(seq_100)
-                embed50 = all_embeddings(seq_50)
-                embed0 = all_embeddings(seq_0)
+                    init_gd_input = input_ids[input_ids!=bad_token_ids[1]]
+                    init_gd_input = init_gd_input.reshape((1, init_gd_input.size(0)))
 
-                # all_embeddings = gedi_model.get_input_embeddings()                
-                # embed100 = all_embeddings(seq_100)
-                # embed0 = all_embeddings(seq_0)
-
-                if secondary_code=='100':
-                    embed = embed100
-                elif secondary_code=='50':
-                    embed = embed50
-                elif secondary_code=='0':
-                    embed = embed0
-                # else: 
-                #     sc = int(secondary_code)
-                #     ratio1 = sc/100
-                #     ratio2 = 1-sc/100
-                #     embed = ratio1*embed100 + ratio2*embed0
-                elif int(secondary_code)>0 and int(secondary_code)<50:
-                    sc = int(secondary_code)
-                    ratio1 = sc/50
-                    ratio2 = 1-sc/50
-                    embed = ratio1*embed50 + ratio2*embed0
-                elif int(secondary_code)>50 and int(secondary_code)<100:
-                    sc = int(secondary_code)
-                    ratio1 = (100-sc)/50
-                    ratio2 = (sc-50)/50
-                    embed = ratio1*embed50 + ratio2*embed100
-                
-
-
- 
-
-                # print(embed)
-                # print(embed.size())
-                
-                # origin
-                # John: 6/21 commented below
-                # seq_a = torch.cat((seq_a, seq_a2, input_ids), dim=1)[:,:]
-                # seq_b = torch.cat((seq_b, seq_a2, input_ids), dim=1)[:,:]
-
-                init_gd_input = input_ids[input_ids!=bad_token_ids[1]]
-                init_gd_input = init_gd_input.reshape((1, init_gd_input.size(0)))
-
-                # print('init_gd_input size:', init_gd_input.size())
-                if protagonist is not None:
-                    seq_a = torch.cat((seq_a, seq_a2, protagonist_append_ids), dim=1)[:,:]
-                    seq_b = torch.cat((seq_b, seq_a2, protagonist_append_ids), dim=1)[:,:]
-                    # seq_a = torch.cat((seq_a, seq_a2, protagonist_append_ids, init_gd_input), dim=1)[:,:]
-                    # seq_b = torch.cat((seq_b, seq_a2, protagonist_append_ids, init_gd_input), dim=1)[:,:]
+                    # print('init_gd_input size:', init_gd_input.size())
+                    if protagonist is not None:
+                        seq_a = torch.cat((seq_a, seq_a2, protagonist_append_ids), dim=1)[:,:]
+                        seq_b = torch.cat((seq_b, seq_a2, protagonist_append_ids), dim=1)[:,:]
+                        # seq_a = torch.cat((seq_a, seq_a2, protagonist_append_ids, init_gd_input), dim=1)[:,:]
+                        # seq_b = torch.cat((seq_b, seq_a2, protagonist_append_ids, init_gd_input), dim=1)[:,:]
+                    else:
+                        seq_a = torch.cat((seq_a, seq_a2), dim=1)[:,:]
+                        seq_b = torch.cat((seq_b, seq_a2), dim=1)[:,:]
                 else:
-                    seq_a = torch.cat((seq_a, seq_a2), dim=1)[:,:]
-                    seq_b = torch.cat((seq_b, seq_a2), dim=1)[:,:]
+                    seq_a2 = torch.LongTensor(multi_code).unsqueeze(0).to(seq_a.device)
+                    seq_a = torch.cat((seq_a, seq_a2, input_ids), dim=1)[:,:]
+                    seq_b = torch.cat((seq_b, seq_a2, input_ids), dim=1)[:,:]
                     # seq_a = torch.cat((seq_a, seq_a2, init_gd_input), dim=1)[:,:]
                     # seq_b = torch.cat((seq_b, seq_a2, init_gd_input), dim=1)[:,:]
 
